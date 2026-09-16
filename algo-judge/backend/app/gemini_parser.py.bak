@@ -1,0 +1,785 @@
+import os
+import json
+import logging
+from typing import List, Optional
+import json
+import time
+from google import genai
+from google.genai import types
+from pydantic import BaseModel, Field, ValidationError
+
+
+# ============================================================
+# LOGGING
+# ============================================================
+GEMINI_MODEL = "gemini-2.5-flash"
+logger = logging.getLogger(
+    "gemini_parser"
+)
+
+logger.setLevel(
+    logging.INFO
+)
+
+
+# ============================================================
+# PYDANTIC MODELS
+# ============================================================
+
+class SampleTest(BaseModel):
+
+    input: str
+
+    output: str
+
+    note: Optional[str] = None
+
+
+class Problem(BaseModel):
+
+    title: Optional[str] = None
+
+    statement: str = Field(
+        default="",
+        description=(
+            "Complete programming "
+            "problem statement"
+        )
+    )
+
+    constraints: Optional[str] = None
+
+    input_spec: Optional[str] = None
+
+    output_spec: Optional[str] = None
+
+    sample_tests: List[SampleTest] = Field(
+        default_factory=list
+    )
+
+
+class ProblemsResponse(BaseModel):
+
+    problems: List[Problem] = Field(
+        default_factory=list
+    )
+
+
+# ============================================================
+# GEMINI CONFIGURATION
+# ============================================================
+
+def get_gemini_client():
+
+    api_key = os.getenv(
+        "GEMINI_API_KEY"
+    )
+
+    if not api_key:
+
+        raise RuntimeError(
+            "GEMINI_API_KEY is not set "
+            "in backend/.env"
+        )
+
+
+    return genai.Client(
+
+        api_key=api_key
+
+    )
+
+
+# ============================================================
+# MIME TYPE HELPER
+# ============================================================
+
+def get_correct_mime_type(
+
+    filename: str,
+
+    mime_type: Optional[str]
+
+) -> str:
+
+    extension = (
+        filename
+        .lower()
+        .rsplit(
+            ".",
+            1
+        )[-1]
+        if "." in filename
+        else ""
+    )
+
+
+    mime_map = {
+
+        "pdf":
+            "application/pdf",
+
+        "txt":
+            "text/plain",
+
+        "docx":
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
+        "doc":
+            "application/msword",
+
+    }
+
+
+    if extension in mime_map:
+
+        return mime_map[
+            extension
+        ]
+
+
+    if mime_type:
+
+        return mime_type
+
+
+    return (
+        "application/octet-stream"
+    )
+
+
+# ============================================================
+# EXTRACTION PROMPT
+# ============================================================
+
+EXTRACTION_PROMPT = """
+You are an expert programming problem document analyzer.
+
+You are given a document that may contain:
+
+- One programming problem
+- Multiple programming problems
+- Programming problems mixed with explanations
+- Assignments containing multiple questions
+- Algorithm questions
+- Data structure questions
+- Competitive programming problems
+
+Your task is to analyze the ENTIRE document carefully.
+
+IMPORTANT:
+
+Do NOT assume the document contains only one problem.
+
+You must identify EVERY independent programming or algorithmic problem.
+
+Determine the boundaries of problems SEMANTICALLY.
+
+Do NOT split problems simply because you see:
+
+- Example
+- Sample Input
+- Sample Output
+- Constraints
+- Explanation
+
+Those sections usually belong to the SAME problem.
+
+Only create a new problem when the document clearly introduces a new independent programming question.
+
+For every problem extract:
+
+1. title
+2. complete problem statement
+3. constraints
+4. input specification
+5. output specification
+6. all sample input/output test cases
+
+IMPORTANT RULES:
+
+- Preserve the original meaning.
+- Do not invent information.
+- Do not merge independent problems.
+- Do not split examples into separate problems.
+- Keep constraints with the correct problem.
+- Keep sample tests with the correct problem.
+- If information is missing, return null.
+- If there are no sample tests, return an empty array.
+- Extract ALL independent programming problems.
+- Ignore non-programming content such as introductions,
+  instructions, grading information, page headers,
+  page footers, and unrelated text.
+
+Return ONLY valid JSON.
+
+The JSON MUST exactly follow this structure:
+
+{
+  "problems": [
+    {
+      "title": "string or null",
+      "statement": "string",
+      "constraints": "string or null",
+      "input_spec": "string or null",
+      "output_spec": "string or null",
+      "sample_tests": [
+        {
+          "input": "string",
+          "output": "string",
+          "note": "string or null"
+        }
+      ]
+    }
+  ]
+}
+
+DO NOT return markdown.
+
+DO NOT use ```json.
+
+DO NOT explain anything.
+
+Return JSON ONLY.
+"""
+
+
+# ============================================================
+# EXTRACT JSON SAFELY
+# ============================================================
+
+def extract_json(
+
+    response_text: str
+
+) -> dict:
+
+    response_text = (
+        response_text
+        .strip()
+    )
+
+
+    # --------------------------------------------
+    # DIRECT JSON
+    # --------------------------------------------
+
+    try:
+
+        return json.loads(
+            response_text
+        )
+
+    except json.JSONDecodeError:
+
+        pass
+
+
+    # --------------------------------------------
+    # REMOVE MARKDOWN FENCES
+    # --------------------------------------------
+
+    if response_text.startswith(
+        "```"
+    ):
+
+        lines = (
+            response_text
+            .splitlines()
+        )
+
+
+        if lines:
+
+            lines = lines[1:]
+
+
+        if (
+            lines
+            and
+            lines[-1].strip()
+            == "```"
+        ):
+
+            lines = lines[:-1]
+
+
+        cleaned = (
+            "\n"
+            .join(lines)
+            .strip()
+        )
+
+
+        try:
+
+            return json.loads(
+                cleaned
+            )
+
+        except json.JSONDecodeError:
+
+            pass
+
+
+    # --------------------------------------------
+    # FIND FIRST JSON OBJECT
+    # --------------------------------------------
+
+    start = response_text.find(
+        "{"
+    )
+
+    end = response_text.rfind(
+        "}"
+    )
+
+
+    if (
+        start == -1
+        or
+        end == -1
+        or
+        end <= start
+    ):
+
+        raise ValueError(
+            "Could not find JSON object "
+            "in Gemini response"
+        )
+
+
+    candidate = (
+        response_text[
+            start:end + 1
+        ]
+    )
+
+
+    return json.loads(
+        candidate
+    )
+
+
+# ============================================================
+# PARSE DOCUMENT WITH GEMINI
+# ============================================================
+
+async def parse_document_with_gemini(
+
+    file_bytes: bytes,
+
+    filename: str,
+
+    mime_type: Optional[str] = None
+
+) -> ProblemsResponse:
+
+    client = get_gemini_client()
+
+
+    # --------------------------------------------------------
+    # MODEL
+    # --------------------------------------------------------
+
+    model_name = os.getenv(
+
+        "GEMINI_MODEL",
+
+        "gemini-2.5-flash"
+
+    )
+
+
+    # --------------------------------------------------------
+    # MIME TYPE
+    # --------------------------------------------------------
+
+    correct_mime_type = (
+        get_correct_mime_type(
+
+            filename,
+
+            mime_type
+
+        )
+    )
+
+
+    logger.info(
+
+        "Sending document to Gemini: %s",
+
+        filename
+
+    )
+
+
+    logger.info(
+
+        "Using MIME type: %s",
+
+        correct_mime_type
+
+    )
+
+
+    try:
+
+        response = (
+
+            client.models.generate_content(
+
+                model=model_name,
+
+                contents=[
+
+                    {
+
+                        "role": "user",
+
+                        "parts": [
+
+                            {
+
+                                "inline_data": {
+
+                                    "mime_type":
+                                        correct_mime_type,
+
+                                    "data":
+                                        file_bytes
+
+                                }
+
+                            },
+
+                            {
+
+                                "text":
+                                    EXTRACTION_PROMPT
+
+                            }
+
+                        ]
+
+                    }
+
+                ],
+
+                config=types.GenerateContentConfig(
+
+                    temperature=0,
+
+                    response_mime_type=
+                        "application/json"
+
+                )
+
+            )
+
+        )
+
+
+    except Exception as e:
+
+        logger.exception(
+
+            "Gemini API request failed"
+
+        )
+
+
+        raise RuntimeError(
+
+            "Gemini API request failed: "
+
+            f"{str(e)}"
+
+        )
+
+
+    # ========================================================
+    # GET RESPONSE TEXT
+    # ========================================================
+
+    response_text = getattr(
+
+        response,
+
+        "text",
+
+        None
+
+    )
+
+
+    if not response_text:
+
+        raise RuntimeError(
+
+            "Gemini returned an empty response"
+
+        )
+
+
+    logger.info(
+
+        "Gemini response received "
+
+        "(%d characters)",
+
+        len(response_text)
+
+    )
+
+
+    # ========================================================
+    # PARSE JSON
+    # ========================================================
+
+    try:
+
+        data = extract_json(
+
+            response_text
+
+        )
+
+
+    except Exception as e:
+
+        logger.error(
+
+            "Invalid JSON returned by Gemini:\n%s",
+
+            response_text[:2000]
+
+        )
+
+
+        raise RuntimeError(
+
+            "Gemini returned invalid JSON: "
+
+            f"{str(e)}"
+
+        )
+
+
+    # ========================================================
+    # VALIDATE RESPONSE
+    # ========================================================
+
+    try:
+
+        parsed = ProblemsResponse(
+
+            problems=data.get(
+
+                "problems",
+
+                []
+
+            )
+
+        )
+
+
+        return parsed
+
+
+    except ValidationError as e:
+
+        logger.error(
+
+            "Gemini response validation failed: %s",
+
+            str(e)
+
+        )
+
+
+        raise RuntimeError(
+
+            "Gemini response validation failed: "
+
+            f"{str(e)}"
+
+        )
+class HiddenTest(BaseModel):
+    input: str
+    expected_output: str
+
+
+class HiddenTestsResponse(BaseModel):
+    tests: List[HiddenTest] = Field(default_factory=list)
+
+def generate_hidden_tests(problem: Problem, count: int = 10) -> List[HiddenTest]:
+    print(f"Generating hidden tests for: {problem.title}")
+
+    client = get_gemini_client()
+
+    problem_text = f"""
+Title:
+{problem.title or ""}
+
+Problem Statement:
+{problem.statement}
+
+Constraints:
+{problem.constraints or ""}
+
+Input Specification:
+{problem.input_spec or ""}
+
+Output Specification:
+{problem.output_spec or ""}
+
+Sample Tests:
+{problem.sample_tests}
+"""
+
+    prompt = f"""
+You are an expert competitive programming test-case generator.
+
+Generate exactly {count} valid hidden test cases for this programming problem.
+
+{problem_text}
+
+IMPORTANT RULES:
+
+- Return ONLY valid JSON.
+- Do not use markdown.
+- Do not use ```json.
+- The top-level object MUST contain a "tests" array.
+- Each test MUST contain exactly:
+  "input"
+  "expected_output"
+- "input" and "expected_output" MUST be JSON strings.
+- Escape all newlines inside strings as \\n.
+- Escape all double quotes inside strings as \\".
+- Do not add explanations.
+- Every expected_output must be correct.
+- Include edge cases and boundary cases.
+- Make sure every input follows the problem constraints.
+
+Required format:
+
+{{
+  "tests": [
+    {{
+      "input": "valid input here",
+      "expected_output": "correct output here"
+    }}
+  ]
+}}
+"""
+
+    max_retries = 3
+
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.1,
+                    response_mime_type="application/json",
+                ),
+            )
+
+            raw_text = (response.text or "").strip()
+
+            print("Gemini hidden-test response received.")
+            print("Response length:", len(raw_text))
+
+            if not raw_text:
+                raise ValueError("Gemini returned an empty response")
+
+            # Remove accidental markdown fences
+            if raw_text.startswith("```"):
+                lines = raw_text.splitlines()
+
+                if lines and lines[0].startswith("```"):
+                    lines = lines[1:]
+
+                if lines and lines[-1].strip() == "```":
+                    lines = lines[:-1]
+
+                raw_text = "\n".join(lines).strip()
+
+            # Parse JSON
+            try:
+                parsed_json = json.loads(raw_text)
+            except json.JSONDecodeError as json_error:
+                print("Invalid JSON returned by Gemini:")
+                print(raw_text)
+
+                raise ValueError(
+                    f"Gemini returned invalid JSON: {json_error}"
+                )
+
+            # Validate structure
+            if not isinstance(parsed_json, dict):
+                raise ValueError("Gemini response is not a JSON object")
+
+            tests_data = parsed_json.get("tests")
+
+            if not isinstance(tests_data, list):
+                raise ValueError(
+                    "Gemini response does not contain a 'tests' array"
+                )
+
+            tests = []
+
+            for test in tests_data:
+                if not isinstance(test, dict):
+                    continue
+
+                test_input = test.get("input")
+                expected_output = test.get("expected_output")
+
+                if test_input is None or expected_output is None:
+                    continue
+
+                tests.append(
+                    HiddenTest(
+                        input=str(test_input),
+                        expected_output=str(expected_output),
+                    )
+                )
+
+            if len(tests) < count:
+                raise ValueError(
+                    f"Gemini generated only {len(tests)} valid tests; "
+                    f"expected {count}"
+                )
+
+            print(f"Successfully generated {len(tests)} hidden tests.")
+
+            return tests[:count]
+
+        except Exception as e:
+            print(
+                f"Hidden test generation attempt "
+                f"{attempt + 1}/{max_retries} failed: {repr(e)}"
+            )
+
+            error_text = str(e)
+
+            if (
+                ("503" in error_text or "UNAVAILABLE" in error_text)
+                and attempt < max_retries - 1
+            ):
+                wait_time = 5 * (attempt + 1)
+
+                print(
+                    f"Gemini temporarily unavailable. "
+                    f"Retrying in {wait_time} seconds..."
+                )
+
+                time.sleep(wait_time)
+                continue
+
+            raise

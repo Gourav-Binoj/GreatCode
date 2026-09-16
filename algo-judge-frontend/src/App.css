@@ -1,0 +1,628 @@
+* {
+  box-sizing: border-box;
+}
+
+
+.app {
+  min-height: 100vh;
+
+  background: #0f1117;
+
+  color: #e6e6e6;
+
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+
+/* =========================
+   HEADER
+========================= */
+
+.header {
+  height: 70px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  padding: 0 40px;
+
+  background: #151821;
+
+  border-bottom:
+    1px solid #252936;
+}
+
+
+.logo {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  font-size: 20px;
+
+  font-weight: 700;
+}
+
+
+.logo-icon {
+  color: #4ade80;
+
+  font-size: 26px;
+}
+
+
+.logo-text {
+  color: white;
+}
+
+
+.header-right {
+  display: flex;
+
+  align-items: center;
+
+  gap: 15px;
+}
+
+
+.welcome-text {
+  color: #9ca3af;
+
+  font-size: 14px;
+}
+
+
+.profile-avatar {
+  width: 38px;
+
+  height: 38px;
+
+  border-radius: 50%;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  background: #4ade80;
+
+  color: #111;
+
+  font-weight: bold;
+}
+
+
+/* =========================
+   MAIN
+========================= */
+
+.main-container {
+  width: 100%;
+
+  max-width: 1150px;
+
+  margin: auto;
+
+  padding: 50px 25px;
+}
+
+
+/* =========================
+   HERO
+========================= */
+
+.hero-section {
+  margin-bottom: 70px;
+}
+
+
+.hero-content {
+  text-align: center;
+}
+
+
+.hero-content h1 {
+  margin: 0;
+
+  font-size: 42px;
+
+  color: white;
+}
+
+
+.hero-content p {
+  margin-top: 15px;
+
+  color: #9ca3af;
+
+  font-size: 17px;
+}
+
+
+/* =========================
+   UPLOAD CARD
+========================= */
+
+.upload-card {
+  max-width: 700px;
+
+  margin: 40px auto 0;
+
+  padding: 40px;
+
+  background: #181b24;
+
+  border:
+    1px solid #292d38;
+
+  border-radius: 16px;
+}
+
+
+.upload-icon {
+  width: 55px;
+
+  height: 55px;
+
+  margin: auto;
+
+  border-radius: 50%;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  background: #1f2937;
+
+  color: #4ade80;
+
+  font-size: 28px;
+}
+
+
+.upload-card h2 {
+  margin-top: 20px;
+
+  color: white;
+}
+
+
+.upload-card p {
+  color: #9ca3af;
+
+  line-height: 1.6;
+}
+
+
+.file-upload-row {
+  margin-top: 25px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 15px;
+
+  flex-wrap: wrap;
+}
+
+
+.file-button {
+  padding: 10px 18px;
+
+  background: #242936;
+
+  border:
+    1px solid #353b4a;
+
+  border-radius: 8px;
+
+  cursor: pointer;
+
+  color: white;
+
+  transition: 0.2s;
+}
+
+
+.file-button:hover {
+  background: #303747;
+}
+
+
+.file-button input {
+  display: none;
+}
+
+
+.file-name {
+  color: #9ca3af;
+
+  font-size: 14px;
+}
+
+
+.upload-button {
+  margin-top: 25px;
+
+  padding: 13px 25px;
+
+  border: none;
+
+  border-radius: 8px;
+
+  background: #22c55e;
+
+  color: #07130a;
+
+  font-size: 15px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+
+.upload-button:hover {
+  background: #4ade80;
+
+  transform:
+    translateY(-1px);
+}
+
+
+/* =========================
+   QUESTIONS SECTION
+========================= */
+
+.questions-section {
+  margin-top: 30px;
+}
+
+
+.questions-header {
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  margin-bottom: 25px;
+
+  gap: 20px;
+
+  flex-wrap: wrap;
+}
+
+
+.questions-header h2 {
+  margin: 0;
+
+  color: white;
+
+  font-size: 28px;
+}
+
+
+.questions-header p {
+  margin-top: 7px;
+
+  color: #9ca3af;
+}
+
+
+/* =========================
+   SEARCH
+========================= */
+
+.search-box {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 10px 14px;
+
+  background: #181b24;
+
+  border:
+    1px solid #292d38;
+
+  border-radius: 8px;
+}
+
+
+.search-box input {
+  width: 220px;
+
+  border: none;
+
+  outline: none;
+
+  background: transparent;
+
+  color: white;
+
+  font-size: 14px;
+}
+
+
+.search-box input::placeholder {
+  color: #6b7280;
+}
+
+
+/* =========================
+   QUESTION LIST
+========================= */
+
+.question-list {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 12px;
+}
+
+
+.question-card {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  padding: 18px 22px;
+
+  background: #181b24;
+
+  border:
+    1px solid #292d38;
+
+  border-radius: 10px;
+
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+
+.question-card:hover {
+  background: #20242f;
+
+  border-color: #3a4152;
+
+  transform:
+    translateY(-1px);
+}
+
+
+.question-left {
+  display: flex;
+
+  align-items: center;
+
+  gap: 15px;
+}
+
+
+.question-number {
+  width: 32px;
+
+  height: 32px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  color: #9ca3af;
+
+  font-weight: 600;
+}
+
+
+.solved-icon {
+  width: 32px;
+
+  height: 32px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  color: #4ade80;
+
+  font-size: 20px;
+
+  font-weight: bold;
+}
+
+
+.question-info h3 {
+  margin: 0;
+
+  color: white;
+
+  font-size: 16px;
+}
+
+
+.question-info span {
+  display: block;
+
+  margin-top: 5px;
+
+  color: #6b7280;
+
+  font-size: 13px;
+}
+
+
+/* =========================
+   QUESTION RIGHT
+========================= */
+
+.question-right {
+  display: flex;
+
+  align-items: center;
+
+  gap: 25px;
+}
+
+
+.difficulty {
+  font-size: 14px;
+
+  font-weight: 600;
+}
+
+
+.easy {
+  color: #22c55e;
+}
+
+
+.medium {
+  color: #facc15;
+}
+
+
+.hard {
+  color: #ef4444;
+}
+
+
+.arrow {
+  color: #6b7280;
+
+  font-size: 20px;
+}
+
+
+.empty-state {
+  padding: 50px;
+
+  text-align: center;
+
+  color: #6b7280;
+
+  background: #181b24;
+
+  border-radius: 10px;
+}
+
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 700px) {
+
+  .header {
+    padding: 0 20px;
+  }
+
+
+  .main-container {
+    padding: 30px 15px;
+  }
+
+
+  .hero-content h1 {
+    font-size: 30px;
+  }
+
+
+  .upload-card {
+    padding: 25px;
+  }
+
+
+  .questions-header {
+    align-items: flex-start;
+  }
+
+
+  .search-box input {
+    width: 180px;
+  }
+
+
+  .question-card {
+    padding: 15px;
+  }
+
+
+  .question-right {
+    gap: 12px;
+  }
+
+}
+
+/* =====================================
+   REVIEW PAGE
+   ===================================== */
+
+/* Field labels get a coloured marker so the long form reads as a
+   sequence of sections rather than one undifferentiated wall. */
+
+.review-card label strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.review-card label strong::before {
+  content: "";
+
+  width: 4px;
+  height: 14px;
+  border-radius: 2px;
+
+  background: #4f46e5;
+}
+
+/* Inputs pick up the same indigo on focus, so the active field is
+   obvious while editing a long extraction. */
+
+.review-card input,
+.review-card textarea {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.review-card input:focus,
+.review-card textarea:focus {
+  outline: none;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.review-card h1 {
+  color: #1e293b;
+}
