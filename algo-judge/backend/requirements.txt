@@ -10,3 +10,4 @@ supabase
 requests
 pydantic
 google-generativeai 
+google-genai
