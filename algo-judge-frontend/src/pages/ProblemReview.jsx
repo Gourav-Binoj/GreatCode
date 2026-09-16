@@ -15,12 +15,10 @@ import {
   removeFromReviewBatch,
 } from "../lib/reviewBatch";
 
+import { API_URL } from "../lib/api";
 
-// ============================================
-// BACKEND URL
-// ============================================
-const API_URL =
-  "http://localhost:8000";
+
+
 
 
 // =====================================

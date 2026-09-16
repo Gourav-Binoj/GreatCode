@@ -22,8 +22,10 @@ import {
   DEFAULT_TIME_LIMIT_MS,
 } from "../lib/pythonRunner";
 
+import { API_URL } from "../lib/api";
 
-const API_URL = "http://localhost:8000";
+
+
 
 
 const STARTER_CODE = `# Read from standard input, print to standard output.

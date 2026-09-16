@@ -8,13 +8,11 @@ import {
   saveReviewBatch,
 } from "../lib/reviewBatch";
 
+import { API_URL } from "../lib/api";
+
 import "../App.css";
 
-// =====================================
-// BACKEND URL
-// =====================================
 
-const API_URL = "http://localhost:8000";
 
 
 export default function Home() {

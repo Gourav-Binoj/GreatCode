@@ -17,7 +17,25 @@ from fastapi.concurrency import run_in_threadpool
 BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = BASE_DIR / ".env"
 
-load_dotenv(dotenv_path=ENV_PATH, override=True)
+# override=False so that real environment variables always win over
+# the file. On Render the secrets come from the dashboard and no
+# .env is deployed (it is gitignored); locally the file fills in
+# anything the shell has not already set.
+#
+# This must not be override=True: a stray .env reaching the server
+# would then silently shadow the platform's configured secrets.
+if ENV_PATH.exists():
+
+    load_dotenv(dotenv_path=ENV_PATH, override=False)
+
+    print(f"Loaded local env file: {ENV_PATH}")
+
+else:
+
+    print(
+        "No .env file found - reading configuration from the "
+        "process environment (expected in production)."
+    )
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
@@ -48,15 +66,36 @@ app = FastAPI(
 # CORS
 # ============================================================
 
+# Local dev origins stay allowed so `npm run dev` keeps working
+# against either a local or the deployed backend.
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "https://great-code-chi.vercel.app",
+]
+
+# Additional origins can be added in Render without a code change,
+# as a comma-separated list. Useful for a custom domain or a
+# specific Vercel preview URL.
+EXTRA_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
+ALLOWED_ORIGINS = DEFAULT_ALLOWED_ORIGINS + EXTRA_ORIGINS
+
+print("CORS allowed origins:", ALLOWED_ORIGINS)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:5173",
-        "http://localhost:5173",
-    ],
+    # An explicit list rather than "*", because allow_credentials
+    # with a wildcard is rejected by browsers and would also let any
+    # site call this API with a user's token.
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
