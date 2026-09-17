@@ -7,6 +7,8 @@ import {
 import Home from "./pages/Home";
 import ProblemSolver from "./pages/ProblemSolver";
 import ProblemReview from "./pages/ProblemReview";
+import Feedback from "./pages/Feedback";
+import SupportMe from "./pages/SupportMe";
 
 function App() {
 
@@ -29,6 +31,16 @@ function App() {
         <Route
           path="/review-problem"
           element={<ProblemReview />}
+        />
+
+        <Route
+          path="/feedback"
+          element={<Feedback />}
+        />
+
+        <Route
+          path="/support"
+          element={<SupportMe />}
         />
 
       </Routes>

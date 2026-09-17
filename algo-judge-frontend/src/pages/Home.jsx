@@ -819,6 +819,27 @@ export default function Home() {
         </div>
 
 
+        {/* NAV */}
+
+        <nav className="header-nav">
+
+          <button
+            className="header-nav-link"
+            onClick={() => navigate("/feedback")}
+          >
+            Feedback
+          </button>
+
+          <button
+            className="header-nav-link coffee"
+            onClick={() => navigate("/support")}
+          >
+            ☕ Buy me a coffee
+          </button>
+
+        </nav>
+
+
         {/* USER */}
 
         <div className="header-right">

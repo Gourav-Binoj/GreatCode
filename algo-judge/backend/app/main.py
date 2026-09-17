@@ -1024,3 +1024,139 @@ async def judge_submission(
         "failed_test_number": first_failed,
         "cases": cases,
     }
+
+
+# ============================================================
+# FEEDBACK EMAIL NOTIFICATION
+# ============================================================
+#
+# The browser writes feedback straight to Supabase (fast, durable,
+# always warm) and then calls this to have it emailed.
+#
+# This endpoint deliberately accepts ONLY an id, never the feedback
+# text. It re-reads the row with the service role and emails what is
+# actually stored. If it accepted a body, anyone could POST arbitrary
+# content and use it to send mail to the inbox.
+#
+# It is also intentionally best-effort: the feedback is already saved
+# before this is called, so a mail failure loses a notification, not
+# the feedback itself.
+
+import uuid as _uuid
+
+from .notifications import (
+    send_feedback_email,
+    email_is_configured,
+)
+
+
+@app.post("/feedback/notify")
+async def notify_feedback(payload: dict):
+
+    feedback_id = (payload or {}).get("id")
+
+    if not feedback_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing feedback id",
+        )
+
+    # Reject anything that is not a UUID before it reaches the
+    # database, so this cannot be used to probe with arbitrary input.
+    try:
+        feedback_id = str(_uuid.UUID(str(feedback_id)))
+    except (ValueError, AttributeError, TypeError):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid feedback id",
+        )
+
+    if not email_is_configured():
+        # Not an error: email is optional. Say so plainly so the
+        # frontend can stay quiet and the logs explain the silence.
+        print(
+            "Feedback email skipped - SMTP is not configured "
+            "(set SMTP_USER, SMTP_PASSWORD, FEEDBACK_EMAIL)"
+        )
+
+        return {
+            "ok": True,
+            "emailed": False,
+            "reason": "email_not_configured",
+        }
+
+    try:
+        result = (
+            supabase
+            .table("feedback")
+            .select(
+                "id,user_id,email,category,rating,"
+                "message,created_at,notified_at"
+            )
+            .eq("id", feedback_id)
+            .execute()
+        )
+
+    except Exception as e:
+        print("Feedback lookup failed:", repr(e))
+
+        raise HTTPException(
+            status_code=500,
+            detail="Could not load the feedback entry",
+        )
+
+    rows = result.data or []
+
+    if not rows:
+        raise HTTPException(
+            status_code=404,
+            detail="Feedback entry not found",
+        )
+
+    entry = rows[0]
+
+    # Already notified. Replaying the same id must not send again,
+    # otherwise this endpoint is an inbox flooder.
+    if entry.get("notified_at"):
+        return {
+            "ok": True,
+            "emailed": False,
+            "reason": "already_notified",
+        }
+
+    try:
+        # smtplib blocks; keep it off the event loop.
+        await run_in_threadpool(
+            send_feedback_email,
+            entry,
+        )
+
+    except Exception as e:
+        print("Feedback email failed:", repr(e))
+
+        # 202: the feedback is stored and safe, only the notification
+        # did not go out. The frontend treats this as success.
+        return {
+            "ok": True,
+            "emailed": False,
+            "reason": str(e),
+        }
+
+    # Mark it sent. A failure here only risks one duplicate email on
+    # a replay, so it must not turn a delivered notification into an
+    # error response.
+    try:
+        (
+            supabase
+            .table("feedback")
+            .update({"notified_at": "now()"})
+            .eq("id", feedback_id)
+            .execute()
+        )
+    except Exception as e:
+        print("Could not mark feedback as notified:", repr(e))
+
+    return {
+        "ok": True,
+        "emailed": True,
+    }

@@ -626,3 +626,76 @@
 .review-card h1 {
   color: #1e293b;
 }
+
+
+/* =====================================
+   HEADER NAV
+   ===================================== */
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  /* Sits between the logo and the user block, and is the first
+     thing to wrap away on narrow screens. */
+  margin-left: auto;
+  margin-right: 18px;
+}
+
+.header-nav-link {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+
+  color: #cbd5e1;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+
+  transition: color 0.15s ease, background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.header-nav-link:hover {
+  color: #ffffff;
+  background: #1e2230;
+  border-color: #313747;
+}
+
+.header-nav-link.coffee {
+  color: #fbbf24;
+  border-color: #3b3524;
+}
+
+.header-nav-link.coffee:hover {
+  color: #151821;
+  background: #fbbf24;
+  border-color: #fbbf24;
+}
+
+/* On phones the header is already tight, so drop the nav labels to
+   icons-only rather than let the header overflow. */
+@media (max-width: 720px) {
+  .header-nav {
+    margin-right: 8px;
+  }
+
+  .header-nav-link {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  .header-nav-link.coffee {
+    font-size: 0;
+  }
+
+  .header-nav-link.coffee::before {
+    content: "☕";
+    font-size: 16px;
+  }
+}
